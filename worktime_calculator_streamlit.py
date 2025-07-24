@@ -1,6 +1,7 @@
 import streamlit as st
 from datetime import datetime
 import pandas as pd
+import math
 
 class WorkTimeCalculatorStreamlit:
     def __init__(self):
@@ -22,7 +23,7 @@ class WorkTimeCalculatorStreamlit:
     
     def minutes_to_hours(self, minutes):
         """분을 시간(소수점)으로 변환"""
-        return round(minutes / 60, 2)
+        return math.floor(minutes / 60 * 100) / 100
     
     def calculate_work_hours(self, start_time, end_time):
         """근무시간 계산 (점심시간, 저녁시간 제외)"""
