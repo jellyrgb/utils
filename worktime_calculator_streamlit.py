@@ -1,11 +1,40 @@
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import math
+import json
+import os
 
 class WorkTimeCalculatorStreamlit:
     def __init__(self):
         self.days = ['월요일', '화요일', '수요일', '목요일', '금요일']
+        self.data_file = 'worktime_data.json'
+    
+    def save_data(self, work_times):
+        """근무시간 데이터를 파일에 저장"""
+        try:
+            with open(self.data_file, 'w', encoding='utf-8') as f:
+                json.dump(work_times, f, ensure_ascii=False, indent=2)
+            return True
+        except Exception as e:
+            st.error(f"데이터 저장 중 오류가 발생했습니다: {e}")
+            return False
+    
+    def load_data(self):
+        """저장된 근무시간 데이터를 불러오기"""
+        try:
+            if os.path.exists(self.data_file):
+                with open(self.data_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            return {}
+        except Exception as e:
+            st.error(f"데이터 로드 중 오류가 발생했습니다: {e}")
+            return {}
+    
+    def get_saved_dates(self):
+        """저장된 데이터의 날짜 목록 반환"""
+        data = self.load_data()
+        return list(data.keys()) if data else []
     
     def time_to_minutes(self, time_str):
         """시간 문자열을 분으로 변환"""
@@ -60,6 +89,29 @@ class WorkTimeCalculatorStreamlit:
         
         return max(0, total_minutes)
     
+    def get_current_week_label(self):
+        """현재 주차를 월별로 표현"""
+        today = datetime.now()
+        # 해당 월의 첫 번째 날
+        first_day = today.replace(day=1)
+        
+        # 해당 월의 첫 번째 월요일 찾기
+        # 만약 1일이 월요일이 아니라면, 다음 월요일을 찾음
+        days_until_monday = (7 - first_day.weekday()) % 7
+        if days_until_monday == 0 and first_day.weekday() != 0:
+            days_until_monday = 7
+        
+        first_monday = first_day + timedelta(days=days_until_monday)
+        
+        # 현재 날짜가 첫 번째 월요일보다 이전이면 1주차
+        if today < first_monday:
+            week_number = 1
+        else:
+            # 첫 번째 월요일부터 몇 주가 지났는지 계산
+            week_number = ((today - first_monday).days // 7) + 2
+        
+        return f"{today.month}월 {week_number}주차"
+    
     def get_today_index(self):
         """오늘 요일의 인덱스 반환 (0=월요일)"""
         today = datetime.now().weekday()  # 0=월요일, 6=일요일
@@ -77,11 +129,70 @@ def main():
     # 제목
     st.title("근무시간 계산기")
     
+    # 데이터 저장/로드 섹션
+    st.markdown("### 데이터 관리")
+    
+    col_load, col_delete = st.columns([1, 1])
+    
+    with col_load:
+        # 저장된 데이터 로드
+        saved_dates = calculator.get_saved_dates()
+        if saved_dates:
+            selected_date = st.selectbox("불러올 데이터", ["선택하세요"] + saved_dates)
+            if selected_date != "선택하세요":
+                if st.button("데이터 불러오기"):
+                    saved_data = calculator.load_data()
+                    if selected_date in saved_data:
+                        # 세션 상태 업데이트
+                        st.session_state.work_times = saved_data[selected_date]
+                        
+                        # 입력 필드 강제 업데이트를 위해 키 초기화
+                        for day in calculator.days:
+                            start_key = f"start_{day}"
+                            end_key = f"end_{day}"
+                            if start_key in st.session_state:
+                                del st.session_state[start_key]
+                            if end_key in st.session_state:
+                                del st.session_state[end_key]
+                        
+                        st.success(f"{selected_date} 데이터를 불러왔습니다!")
+                        st.rerun()
+        else:
+            st.info("저장된 데이터가 없습니다")
+    
+    with col_delete:
+        # 저장된 데이터 삭제
+        if saved_dates:
+            delete_date = st.selectbox("삭제할 데이터", ["선택하세요"] + saved_dates, key="delete_select")
+            if delete_date != "선택하세요":
+                if st.button("데이터 삭제", type="secondary"):
+                    saved_data = calculator.load_data()
+                    if delete_date in saved_data:
+                        del saved_data[delete_date]
+                        if calculator.save_data(saved_data):
+                            st.success(f"{delete_date} 데이터가 삭제되었습니다!")
+                            st.rerun()
+    
+    st.markdown("---")
+    
     # 세션 상태 초기화
     if 'work_times' not in st.session_state:
-        st.session_state.work_times = {}
-        for day in calculator.days:
-            st.session_state.work_times[day] = {'start': '', 'end': ''}
+        # 저장된 데이터가 있다면 자동으로 최신 데이터 로드
+        saved_data = calculator.load_data()
+        if saved_data:
+            # 가장 최근 주차 데이터 자동 로드
+            latest_week = max(saved_data.keys()) if saved_data else None
+            if latest_week:
+                st.session_state.work_times = saved_data[latest_week]
+                st.info(f"자동으로 {latest_week} 데이터를 불러왔습니다.")
+            else:
+                st.session_state.work_times = {}
+                for day in calculator.days:
+                    st.session_state.work_times[day] = {'start': '', 'end': ''}
+        else:
+            st.session_state.work_times = {}
+            for day in calculator.days:
+                st.session_state.work_times[day] = {'start': '', 'end': ''}
     
     # 헤더
     col1, col2, col3, col4 = st.columns([1.5, 2, 2, 1.5])
@@ -107,8 +218,11 @@ def main():
         
         with col2:
             start_key = f"start_{day}"
+            # 세션 상태에서 기본값 가져오기
+            default_start = st.session_state.work_times[day]['start'] if day in st.session_state.work_times else ''
             start_time = st.text_input(
                 "출근시간",
+                value=default_start,
                 key=start_key,
                 placeholder="09:30",
                 label_visibility="collapsed"
@@ -117,8 +231,11 @@ def main():
         
         with col3:
             end_key = f"end_{day}"
+            # 세션 상태에서 기본값 가져오기
+            default_end = st.session_state.work_times[day]['end'] if day in st.session_state.work_times else ''
             end_time = st.text_input(
                 "퇴근시간",
+                value=default_end,
                 key=end_key,
                 placeholder="18:30",
                 label_visibility="collapsed"
@@ -180,11 +297,36 @@ def main():
             unsafe_allow_html=True
         )
     
-    # 초기화 버튼
-    if st.button("초기화"):
-        for day in calculator.days:
-            st.session_state.work_times[day] = {'start': '', 'end': ''}
-        st.rerun()
+    # 버튼들
+    col_reset, col_quick_save = st.columns([1, 1])
+    
+    with col_reset:
+        # 초기화 버튼
+        if st.button("초기화", type="secondary"):
+            # 세션 상태 초기화
+            for day in calculator.days:
+                st.session_state.work_times[day] = {'start': '', 'end': ''}
+            
+            # 입력 필드 강제 업데이트를 위해 키 초기화
+            for day in calculator.days:
+                start_key = f"start_{day}"
+                end_key = f"end_{day}"
+                if start_key in st.session_state:
+                    del st.session_state[start_key]
+                if end_key in st.session_state:
+                    del st.session_state[end_key]
+            
+            st.rerun()
+    
+    with col_quick_save:
+        # 빠른 저장 버튼
+        if st.button("입력 내용 저장", type="primary"):
+            current_week = calculator.get_current_week_label()
+            saved_data = calculator.load_data()
+            saved_data[current_week] = st.session_state.work_times
+            if calculator.save_data(saved_data):
+                st.success(f"{current_week} 데이터가 저장되었습니다!")
+                st.rerun()
     
 if __name__ == "__main__":
     main()
