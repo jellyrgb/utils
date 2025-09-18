@@ -109,7 +109,6 @@ def main():
 
     # --- 2. 3x3 버튼 레이아웃으로 사용자 선택 ---
     st.title("근무시간 계산기")
-    st.markdown("<p style='text-align: center; font-size: 1.2rem; margin-top: -10px; margin-bottom: 20px;'>본인 이름을 클릭하세요.</p>", unsafe_allow_html=True)
 
     cols = st.columns(3)
     for i, user in enumerate(USER_LIST):
