@@ -89,13 +89,23 @@ class WorkTimeCalculatorStreamlit:
         return round(minutes / 60, 2)
 
     def get_current_week_label(self):
+        """ISO 주차 계산 방식을 사용하여 정확한 주차를 반환합니다."""
         today = datetime.now()
+        # 해당 월의 첫 날
         first_day_of_month = today.replace(day=1)
-        first_monday_of_month = first_day_of_month + timedelta(days=(0 - first_day_of_month.weekday() + 7) % 7)
-        if today < first_monday_of_month:
-            week_number = 1
+        
+        # 첫 날의 주차 번호
+        first_week_number = first_day_of_month.isocalendar()[1]
+        
+        # 현재 날짜의 주차 번호
+        current_week_number = today.isocalendar()[1]
+        
+        # 월이 바뀌면서 주차가 줄어드는 경우 (예: 1월 1일이 포함된 주가 전년도 주차인 경우) 보정
+        if first_week_number > current_week_number and today.month == 1:
+            week_number = current_week_number
         else:
-            week_number = ((today - first_day_of_month).days // 7) + 2
+            week_number = current_week_number - first_week_number + 1
+
         return f"{today.month}월 {week_number}주차"
 
 def main():
