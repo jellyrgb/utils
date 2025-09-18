@@ -95,7 +95,7 @@ class WorkTimeCalculatorStreamlit:
         if today < first_monday_of_month:
             week_number = 1
         else:
-            week_number = ((today - first_monday_of_month).days // 7) + 2
+            week_number = ((today - first_day_of_month).days // 7) + 2
         return f"{today.month}월 {week_number}주차"
 
 def main():
@@ -108,10 +108,10 @@ def main():
     calculator = WorkTimeCalculatorStreamlit()
 
     # --- 2. 3x3 버튼 레이아웃으로 사용자 선택 ---
-    st.sidebar.title("사용자 선택")
-    st.sidebar.write("본인 이름을 클릭하세요.")
+    st.title("근무시간 계산기")
+    st.markdown("<p style='text-align: center; font-size: 1.2rem; margin-top: -10px; margin-bottom: 20px;'>본인 이름을 클릭하세요.</p>", unsafe_allow_html=True)
 
-    cols = st.sidebar.columns(3)
+    cols = st.columns(3)
     for i, user in enumerate(USER_LIST):
         with cols[i % 3]:
             if st.button(user, key=f"user_btn_{user}", use_container_width=True):
@@ -124,11 +124,8 @@ def main():
                     st.session_state.work_times = {day: {'start': '', 'end': ''} for day in calculator.days}
                 st.rerun()
 
-    st.sidebar.success(f"현재 선택된 사용자: **{st.session_state.selected_user}**")
-    
-    # --- 메인 페이지 UI ---
-    st.title(f"근무시간 계산기")
-    st.subheader(f"({st.session_state.selected_user}님)")
+    st.success(f"현재 선택된 사용자: **{st.session_state.selected_user}**")
+    st.markdown("---")
     
     # 데이터 관리 섹션
     st.markdown("### 데이터 관리")
