@@ -117,26 +117,44 @@ def main():
         page_title="근무시간 계산기",
         page_icon="⏰",
         layout="centered"
-    )
-    # Responsive tweaks: make inputs full-width and improve stacking on narrow screens
+        )
+    # Responsive tweaks: make inputs/buttons full-width and stack columns on small screens
     st.markdown("""
     <style>
-        /* Make text inputs expand to available width for better narrow-screen layout */
-        input[type='text'] {
+        /* Basic inputs take full width for narrow screens */
+        input[type='text'], input[type='time'], textarea {
             width: 100% !important;
             box-sizing: border-box;
             padding: 6px 8px !important;
         }
 
-        /* Make Streamlit column blocks wrap/stick to full width on small screens */
-        @media (max-width: 700px) {
-            /* target generic column containers */
-            .css-1lcbmhc.e1fqkh3o3, .stColumns, [data-testid='column'] {
-                flex-wrap: wrap !important;
-            }
-            .css-1lcbmh3o3 > div, .stColumns > div, [data-testid='column'] > div {
+        /* Make buttons fill available width on small screens */
+        .stButton > button, button[role='button'], input[type='button'] {
+            width: auto; /* default for large screens */
+        }
+
+        @media (max-width: 720px) {
+            /* Stack Streamlit columns and make each column full-width */
+            .stColumns, [data-testid='column'], .st-bQyJg { /* fallback selectors */
+                display: block !important;
                 width: 100% !important;
                 max-width: 100% !important;
+            }
+            .stColumns > div, [data-testid='column'] > div {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
+            /* Make buttons and inputs expand to full width when stacked */
+            .stButton > button, button[role='button'], input[type='button'] {
+                width: 100% !important;
+                box-sizing: border-box;
+            }
+
+            /* Reduce paddings and make header text wrap better */
+            .block-container {
+                padding-left: 12px !important;
+                padding-right: 12px !important;
             }
         }
     </style>
