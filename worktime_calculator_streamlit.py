@@ -74,12 +74,16 @@ class WorkTimeCalculatorStreamlit:
             lunch_start = 12 * 60 + 30
             lunch_end = 13 * 60 + 30
             if start_minutes < lunch_end and end_minutes > lunch_start:
-                total_minutes -= min(end_minutes, lunch_end) - max(start_minutes, lunch_start)
+                # subtract the overlap with lunch (max 60 minutes)
+                overlap = min(end_minutes, lunch_end) - max(start_minutes, lunch_start)
+                total_minutes -= max(0, min(overlap, 60))
 
             dinner_start = 18 * 60 + 30
             dinner_end = 19 * 60 + 30
             if start_minutes < dinner_end and end_minutes > dinner_start:
-                total_minutes -= min(end_minutes, dinner_end) - max(start_minutes, dinner_end)
+                # subtract the overlap with dinner (max 60 minutes)
+                overlap = min(end_minutes, dinner_end) - max(start_minutes, dinner_start)
+                total_minutes -= max(0, min(overlap, 60))
             
             return max(0, total_minutes)
         except (ValueError, IndexError):
@@ -114,6 +118,29 @@ def main():
         page_icon="⏰",
         layout="centered"
     )
+    # Responsive tweaks: make inputs full-width and improve stacking on narrow screens
+    st.markdown("""
+    <style>
+        /* Make text inputs expand to available width for better narrow-screen layout */
+        input[type='text'] {
+            width: 100% !important;
+            box-sizing: border-box;
+            padding: 6px 8px !important;
+        }
+
+        /* Make Streamlit column blocks wrap/stick to full width on small screens */
+        @media (max-width: 700px) {
+            /* target generic column containers */
+            .css-1lcbmhc.e1fqkh3o3, .stColumns, [data-testid='column'] {
+                flex-wrap: wrap !important;
+            }
+            .css-1lcbmh3o3 > div, .stColumns > div, [data-testid='column'] > div {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+        }
+    </style>
+    """, unsafe_allow_html=True)
     
     calculator = WorkTimeCalculatorStreamlit()
 
@@ -192,7 +219,9 @@ def main():
             end_time = st.text_input("퇴근시간", value=end_value, key=end_key, placeholder="18:30", label_visibility="collapsed")
             st.session_state.work_times.setdefault(day, {})['end'] = end_time
 
-        work_minutes = calculator.calculate_work_hours(start_time, end_time)
+        # If end_time is not provided, use default 18:30 for calculation
+        calc_end_time = end_time if (end_time and str(end_time).strip()) else '18:30'
+        work_minutes = calculator.calculate_work_hours(start_time, calc_end_time)
         with cols[3]:
             if work_minutes > 0:
                 st.write(f"**{calculator.minutes_to_hours(work_minutes):.2f}시간**")
